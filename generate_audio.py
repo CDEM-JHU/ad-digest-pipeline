@@ -92,23 +92,33 @@ def generate_transcript(digest_text):
 
 
 def clean_transcript(text):
-    """Trim to the tagged dialogue and validate balanced, present Person tags."""
-    start = text.find("<Person1>")
-    if start == -1:
-        raise ValueError("Transcript has no <Person1> tag — unexpected model output.")
-    text = text[start:]
-    last_close = max(text.rfind("</Person1>"), text.rfind("</Person2>"))
-    if last_close != -1:
-        end = text.find(">", last_close) + 1
-        text = text[:end]
+    """Reconstruct clean, balanced Person tags from possibly-imperfect LLM output.
 
-    p1o, p1c = text.count("<Person1>"), text.count("</Person1>")
-    p2o, p2c = text.count("<Person2>"), text.count("</Person2>")
-    if p1o != p1c or p2o != p2c or (p1o + p2o) < 2:
+    LLMs often drop or duplicate a closing tag. Rather than fail, we treat each
+    opening <Person1>/<Person2> as the start of a turn that runs until the next
+    opening tag, strip any stray tags from the content, and re-emit well-formed,
+    balanced markup that Podcastfy's TTS can split reliably.
+    """
+    # Each turn = an opening tag + everything up to the next opening tag (or end).
+    turns = re.findall(
+        r"<\s*Person\s*([12])\s*>(.*?)(?=<\s*Person\s*[12]\s*>|$)",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    cleaned = []
+    for speaker, content in turns:
+        # Remove any stray open/close Person tags left inside the captured content.
+        content = re.sub(r"<\s*/?\s*Person\s*[12]\s*>", "", content, flags=re.IGNORECASE)
+        content = content.strip()
+        if content:
+            cleaned.append(f"<Person{speaker}>{content}</Person{speaker}>")
+
+    if len(cleaned) < 2:
         raise ValueError(
-            f"Malformed transcript tags (P1 {p1o}/{p1c}, P2 {p2o}/{p2c})."
+            f"Could not recover a usable dialogue from model output "
+            f"({len(cleaned)} turn(s) found)."
         )
-    return text
+    return "".join(cleaned)
 
 
 def prune_old_episodes():
