@@ -75,7 +75,9 @@ BUCKETS = [
     ),
 ]
 
-LOOKBACK_HOURS = 24
+# Defaults to 24h; override via the LOOKBACK_HOURS env var (the workflow exposes
+# this as a manual-run input, handy for a first test on a quiet news day).
+LOOKBACK_HOURS = int(os.environ.get("LOOKBACK_HOURS", "24"))
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 CREDENTIALS_FILE = "credentials.json"
 

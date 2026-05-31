@@ -5,7 +5,12 @@ on:
     # 07:00 UTC = 02:00 EST. GitHub cron is always UTC and has no DST,
     # so during EDT (summer) this fires at 03:00 local. Either is fine.
     - cron: "0 7 * * *"
-  workflow_dispatch: {}  # allow manual runs from the Actions tab
+  workflow_dispatch:     # allow manual runs from the Actions tab
+    inputs:
+      lookback_hours:
+        description: "How many hours back to include (default 24; widen for a test)"
+        required: false
+        default: "24"
 
 # Needed so the job can commit the new episode + feed back to the repo
 # (which is what GitHub Pages serves).
@@ -47,11 +52,13 @@ jobs:
       - name: Build digest (RSS -> text, optional Drive upload)
         env:
           DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+          LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '24' }}
         run: python main.py
 
       - name: Generate podcast episode (Claude script + Edge TTS)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '24' }}
         run: python generate_audio.py
 
       - name: Rebuild podcast feed
