@@ -12,6 +12,7 @@ directly from a Drive folder) to generate an Audio Overview / podcast.
 """
 
 import calendar
+import html
 import os
 import sys
 import time
@@ -30,10 +31,21 @@ FEEDS = [
         "url": "https://alz-journals.onlinelibrary.wiley.com/action/showFeed?jc=15525279&type=etoc&feed=rss",
     },
     {
-        "name": "AlzForum (Papers)",
-        "url": "https://www.alzforum.org/rss/papers",
+        # AlzForum's own /rss/* paths are Cloudflare-blocked (403). The site
+        # publishes via FeedBurner (Google-hosted, not bot-blocked). This is the
+        # curated daily-news feed; "Papers of the Week" is skipped because its
+        # entries carry no dates and would bypass the 24h window.
+        "name": "AlzForum (News)",
+        "url": "http://feeds.feedburner.com/alzforum/PpcR",
     },
 ]
+
+# Some feeds (e.g. anything behind Cloudflare) reject the default feedparser
+# user-agent with HTTP 403, so present a browser-like UA on every request.
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
 
 # Buckets in priority order. The FIRST bucket whose keywords match wins, so
 # list the highest-priority bucket first. Keywords are matched case-insensitively
@@ -104,7 +116,7 @@ def collect_recent_entries():
 
     for feed in FEEDS:
         print(f"Fetching: {feed['name']} ({feed['url']})", file=sys.stderr)
-        parsed = feedparser.parse(feed["url"])
+        parsed = feedparser.parse(feed["url"], agent=USER_AGENT)
         if parsed.bozo:
             print(f"  WARNING: feed parse issue: {parsed.bozo_exception}", file=sys.stderr)
 
@@ -118,10 +130,10 @@ def collect_recent_entries():
             bucket = classify(entry)
             buckets[bucket].append(
                 {
-                    "title": entry.get("title", "(untitled)").strip(),
+                    "title": html.unescape(entry.get("title", "(untitled)")).strip(),
                     "link": entry.get("link", "").strip(),
                     "source": feed["name"],
-                    "summary": (entry.get("summary", "") or "").strip(),
+                    "summary": html.unescape(entry.get("summary", "") or "").strip(),
                     "ts": ts,
                     "undated": ts is None,
                 }
