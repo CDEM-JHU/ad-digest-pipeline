@@ -1,5 +1,7 @@
-# NEVER commit the service-account key
+# NEVER commit credentials/secrets
 credentials.json
+client_secret.json
+token.json
 
 # Python
 __pycache__/
