@@ -55,9 +55,9 @@ jobs:
           LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '24' }}
         run: python main.py
 
-      - name: Generate podcast episode (Claude script + Edge TTS)
+      - name: Generate podcast episode (Gemini script + Edge TTS)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '24' }}
         run: python generate_audio.py
 

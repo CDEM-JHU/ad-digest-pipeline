@@ -3,12 +3,13 @@
 Turn the daily digest text into a two-host podcast MP3.
 
 Two stages, deliberately decoupled:
-  1. Claude (via litellm) writes the two-host script from the digest. We control
+  1. Gemini (via litellm) writes the two-host script from the digest. We control
      this prompt entirely — no external/untrusted prompt templates are pulled.
   2. Podcastfy renders that script to audio with Microsoft Edge TTS (free, no key)
      via its transcript-file path, which skips all content generation.
 
-Requirements: ANTHROPIC_API_KEY env var, and ffmpeg installed (for audio merge).
+Requirements: GEMINI_API_KEY env var (free from Google AI Studio), and ffmpeg
+installed (for audio merge).
 
 The finished episode is written to docs/episodes/AD_Digest_YYYY-MM-DD.mp3 for
 build_feed.py to publish. If there were no new articles, no episode is produced.
@@ -25,7 +26,11 @@ from main import collect_recent_entries, render_digest
 
 EPISODES_DIR = os.path.join("docs", "episodes")
 KEEP_EPISODES = 30  # prune older episodes to keep the repo small
-ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+# litellm model id, provider-prefixed. Gemini 2.5 Flash is free-tier eligible.
+LLM_MODEL = os.environ.get("LLM_MODEL", "gemini/gemini-2.5-flash")
+# litellm reads the provider key from the environment automatically; for the
+# gemini/ provider that's GEMINI_API_KEY.
+LLM_API_KEY_ENV = os.environ.get("LLM_API_KEY_ENV", "GEMINI_API_KEY")
 
 TRANSCRIPT_PROMPT = """\
 You are scripting a daily two-host audio briefing called "AD Daily" for a \
@@ -77,9 +82,8 @@ def generate_transcript(digest_text):
     """Have Claude write the two-host script in Podcastfy's Person-tag markup."""
     import litellm
 
-    model = ANTHROPIC_MODEL if "/" in ANTHROPIC_MODEL else f"anthropic/{ANTHROPIC_MODEL}"
     resp = litellm.completion(
-        model=model,
+        model=LLM_MODEL,
         messages=[{"role": "user", "content": TRANSCRIPT_PROMPT.format(digest=digest_text)}],
         max_tokens=4096,
         temperature=0.6,
@@ -117,8 +121,8 @@ def prune_old_episodes():
 
 
 def main():
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("ERROR: ANTHROPIC_API_KEY is not set.", file=sys.stderr)
+    if not os.environ.get(LLM_API_KEY_ENV):
+        print(f"ERROR: {LLM_API_KEY_ENV} is not set.", file=sys.stderr)
         sys.exit(1)
 
     digest_text, count, today = load_or_build_digest()
@@ -126,7 +130,7 @@ def main():
         print("No new articles today — skipping episode generation.", file=sys.stderr)
         return
 
-    print(f"Writing script from {count} articles with {ANTHROPIC_MODEL}…", file=sys.stderr)
+    print(f"Writing script from {count} articles with {LLM_MODEL}…", file=sys.stderr)
     transcript = generate_transcript(digest_text)
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
