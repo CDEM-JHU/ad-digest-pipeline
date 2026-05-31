@@ -1,0 +1,17 @@
+# NEVER commit the service-account key
+credentials.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Local output
+*.digest.txt
+digest_*.txt
+
+# OS / editor
+.DS_Store
+.vscode/
