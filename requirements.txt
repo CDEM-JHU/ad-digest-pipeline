@@ -2,3 +2,8 @@ feedparser==6.0.11
 google-api-python-client==2.128.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.0
+podcastfy==0.4.3
+# Podcastfy imports playwright at module load (website extractor) but doesn't
+# declare it. We use text input (no browser), so the package alone is enough —
+# no `playwright install` browser binaries needed.
+playwright==1.49.0

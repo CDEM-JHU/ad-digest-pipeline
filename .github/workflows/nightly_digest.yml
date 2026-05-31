@@ -3,12 +3,14 @@ name: Nightly AD Digest
 on:
   schedule:
     # 07:00 UTC = 02:00 EST. GitHub cron is always UTC and has no DST,
-    # so during EDT (summer) this fires at 03:00 local. Adjust if needed.
+    # so during EDT (summer) this fires at 03:00 local. Either is fine.
     - cron: "0 7 * * *"
   workflow_dispatch: {}  # allow manual runs from the Actions tab
 
+# Needed so the job can commit the new episode + feed back to the repo
+# (which is what GitHub Pages serves).
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-digest:
@@ -23,28 +25,50 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - name: Install ffmpeg (required by Podcastfy for audio)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Decode service-account credentials
+      - name: Decode service-account credentials (optional Drive upload)
         env:
           GOOGLE_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_CREDENTIALS_BASE64 }}
         run: |
-          if [ -z "$GOOGLE_CREDENTIALS_BASE64" ]; then
-            echo "::error::GOOGLE_CREDENTIALS_BASE64 secret is empty or unset."
-            exit 1
+          if [ -n "$GOOGLE_CREDENTIALS_BASE64" ]; then
+            printf '%s' "$GOOGLE_CREDENTIALS_BASE64" | base64 --decode > credentials.json
+            python -c "import json; json.load(open('credentials.json')); print('credentials.json decoded OK')"
+          else
+            echo "No GOOGLE_CREDENTIALS_BASE64 secret set — Drive upload will be skipped."
           fi
-          printf '%s' "$GOOGLE_CREDENTIALS_BASE64" | base64 --decode > credentials.json
-          # sanity-check it decoded to valid JSON without printing its contents
-          python -c "import json; json.load(open('credentials.json')); print('credentials.json decoded OK')"
 
-      - name: Run digest
+      - name: Build digest (RSS -> text, optional Drive upload)
         env:
           DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
         run: python main.py
 
+      - name: Generate podcast episode (Claude script + Edge TTS)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python generate_audio.py
+
+      - name: Rebuild podcast feed
+        run: python build_feed.py
+
       - name: Clean up credentials
         if: always()
         run: rm -f credentials.json
+
+      - name: Publish episode + feed to repo (GitHub Pages)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          if git diff --cached --quiet; then
+            echo "No changes to publish (likely no new articles today)."
+          else
+            git commit -m "AD Daily episode + feed: $(date -u +%F)"
+            git push
+          fi

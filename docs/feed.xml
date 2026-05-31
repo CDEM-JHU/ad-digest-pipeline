@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>AD Daily — Alzheimer's Biomarkers &amp; Therapeutics</title>
+    <link>https://jhinson01.github.io/ad-digest-pipeline</link>
+    <description>An automated daily audio brief on neurodegenerative-disease biomarkers and treatments, generated from AlzForum and the Alzheimer's &amp; Dementia journal.</description>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 May 2026 21:26:08 +0000</lastBuildDate>
+    <atom:link href="https://jhinson01.github.io/ad-digest-pipeline/feed.xml" rel="self" type="application/rss+xml"/>
+    <itunes:author>AD Daily (automated)</itunes:author>
+    <itunes:summary>An automated daily audio brief on neurodegenerative-disease biomarkers and treatments, generated from AlzForum and the Alzheimer's &amp; Dementia journal.</itunes:summary>
+    <itunes:explicit>false</itunes:explicit>
+    <itunes:category text="Science"/>
+    <itunes:owner><itunes:name>AD Daily (automated)</itunes:name></itunes:owner>
+
+  </channel>
+</rss>

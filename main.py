@@ -226,19 +226,25 @@ def upload_to_drive(text, folder_id):
 # --- Main ------------------------------------------------------------------
 
 def main():
-    folder_id = os.environ.get("DRIVE_FOLDER_ID")
-    if not folder_id:
-        print("ERROR: DRIVE_FOLDER_ID environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
-
     buckets = collect_recent_entries()
     digest = render_digest(buckets)
 
-    # Always write a local copy for debugging / inspection.
+    # Always write a local copy. The audio step (generate_audio.py) reads this
+    # file, so it must be written regardless of whether Drive is configured.
     local_name = f"digest_{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.txt"
     with open(local_name, "w", encoding="utf-8") as fh:
         fh.write(digest)
     print(f"Wrote local copy: {local_name}", file=sys.stderr)
+
+    # Drive upload is optional: skip gracefully if it isn't set up, so the rest
+    # of the pipeline (audio + podcast feed) still runs.
+    folder_id = os.environ.get("DRIVE_FOLDER_ID")
+    if not folder_id:
+        print("NOTE: DRIVE_FOLDER_ID not set — skipping Google Drive upload.", file=sys.stderr)
+        return
+    if not os.path.exists(CREDENTIALS_FILE):
+        print(f"NOTE: {CREDENTIALS_FILE} not found — skipping Google Drive upload.", file=sys.stderr)
+        return
 
     created = upload_to_drive(digest, folder_id)
     print(
